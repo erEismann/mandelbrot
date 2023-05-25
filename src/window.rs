@@ -1,50 +1,71 @@
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
-    dpi::{LogicalSize, PhysicalSize},
+    dpi::{LogicalSize, PhysicalPosition, PhysicalSize},
     event_loop::EventLoop,
     window::{Window, WindowBuilder, WindowId},
 };
 
-const INIT_WIDTH: u32 = 1200;
-const INIT_HEIGHT: u32 = 800;
-
-pub struct MyWindow {
+pub struct MyWindow<F>
+where
+    F: FnMut(&mut [u8], u32, u32),
+{
+    pub id: WindowId,
     window: Window,
     pixels: Pixels,
-    render: fn(&mut [u8], u32, u32),
+    render: F,
 }
 
-impl MyWindow {
-    pub fn new(event_loop: &EventLoop<()>, render: fn(&mut [u8], u32, u32)) -> (WindowId, Self) {
+impl<F> MyWindow<F>
+where
+    F: FnMut(&mut [u8], u32, u32),
+{
+    pub fn new(
+        event_loop: &EventLoop<()>,
+        width: u32,
+        height: u32,
+        title: String,
+        render: F,
+    ) -> Self {
         let window = WindowBuilder::new()
-            .with_title("Mandelbrot")
-            .with_inner_size(LogicalSize::new(INIT_WIDTH, INIT_HEIGHT))
+            .with_title(title)
+            .with_inner_size(LogicalSize::new(width, height))
             .build(&event_loop)
             .unwrap();
 
-        let tex = SurfaceTexture::new(INIT_WIDTH, INIT_HEIGHT, &window);
-        let pixels = Pixels::new(INIT_WIDTH, INIT_HEIGHT, tex).unwrap();
+        let tex = SurfaceTexture::new(width, height, &window);
+        let pixels = Pixels::new(width, height, tex).unwrap();
 
         let id = window.id();
-
-        let mb = MyWindow {
+        MyWindow {
+            id,
             window,
             pixels,
             render,
-        };
-
-        (id, mb)
+        }
     }
 
     pub fn redraw(&mut self) {
         let PhysicalSize { width, height } = self.window.inner_size();
-        (self.render)(self.pixels.frame_mut(), width, height);
-        self.pixels.render().unwrap();
+        if width != 0 && height != 0 {
+            (self.render)(self.pixels.frame_mut(), width, height);
+            self.pixels.render().unwrap();
+        }
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.pixels.resize_surface(width, height).unwrap();
-        self.pixels.resize_buffer(width, height).unwrap();
-        self.window.request_redraw();
+    pub fn resize(&mut self, size: PhysicalSize<u32>) {
+        let PhysicalSize { width, height } = size;
+        if width != 0 && height != 0 {
+            self.pixels.resize_surface(width, height).unwrap();
+            self.pixels.resize_buffer(width, height).unwrap();
+            self.window.request_redraw();
+        }
+    }
+
+    pub fn hover(&mut self, pos: PhysicalPosition<f64>) -> (f32, f32) {
+        let PhysicalPosition { x, y } = pos;
+        let PhysicalSize { width, height } = self.window.inner_size();
+        let x = x as f32 / width as f32;
+        let y = y as f32 / height as f32;
+        (x, y)
     }
 }

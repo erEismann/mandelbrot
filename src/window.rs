@@ -95,8 +95,9 @@ impl JlMbWindow {
     }
 
     pub fn set_init_val(&mut self, init: Complex<f32>) {
-        if let JlMbMode::Julia(jl_init) = &mut self.vals.mode {
-            *jl_init = init;
+        match &mut self.vals.mode {
+            JlMbMode::Julia(jl_init) => *jl_init = init,
+            JlMbMode::Mandelbrot => panic!("can't set init value for mandelbrot"),
         }
     }
 
@@ -132,8 +133,10 @@ impl JlMbWindow {
 
         let pixel_count = pixels.len();
         let total_time = start.elapsed().as_secs_f32() * 1000.0;
+        let fps = 1000.0 / total_time;
 
-        println!("{}: {} px, {:.2} ms", self.name, pixel_count, total_time,);
+        println!("{}: {} px, {:.2} ms, {:.2} fps", self.name, pixel_count, total_time, fps);
+        
     }
 
     fn calc(&self, mut z: Complex<f32>, c: Complex<f32>) -> f32 {
